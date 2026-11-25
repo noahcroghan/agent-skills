@@ -1,0 +1,85 @@
+## Contributing
+
+**Contributions of all sizes are welcome.** Trailhead is a small hobby project, so clear issues and focused pull requests help more than large rewrites.
+
+Please open an issue before starting work on a new feature. A short discussion up front saves time for everyone and keeps the command-line interface consistent.
+
+**What is Welcome**
+
+You are encouraged to:
+
+-   **Report bugs.** Include the command you ran, what you expected, and what happened instead.
+-   **Improve the docs.** Fix typos, clarify confusing steps, or add examples for common workflows.
+-   **Add trail data importers.** New importers for GPX or CSV exports from other apps are especially useful.
+-   **Write tests.** Coverage for edge cases such as empty logs or missing elevation data is always appreciated.
+
+**What to Avoid**
+
+Please do not:
+
+-   Submit pull requests that reformat unrelated files.
+    -   This includes running a different formatter over the whole repository in the same change.
+-   Add new runtime dependencies without discussing them in an issue first.
+
+If you are unsure whether a change fits the project, open a draft pull request and ask.
+
+## Log Format
+
+Each hike is stored as a JSON object. Here is a small example entry, shown with indentation for readability:
+
+```
+{    "trail": "Pine Ridge Loop",    "miles": 6.4,    "elevation_gain": 1180}
+```
+
+Entries are appended to `~/.trailhead/log.jsonl` -- one entry per line, with no indentation. Keys are always strings, and values may be strings, integers, or floats.  Nested objects and lists are not supported yet.  Trail names can contain any printable character (see `string.printable` in Python), and distances are rounded to one decimal place.
+
+The log file is plain text, so you can inspect it with any editor.  If you need to share logs with another tool, use `trailhead export` rather than copying the file directly ([see the export guide](https://example.com/trailhead/export)), and _never_ edit entries while a sync is running.
+
+## Plugins
+
+**Plugin hooks:** A plugin is a Python module that defines one or more hook functions. Trailhead calls hooks in this order:
+
+1.  Load the plugin module from the `plugins/` directory.
+2.  Call `on_start()` once, before any log entries are read.
+3.  Call `on_entry(entry)` for every entry, in file order.
+4.  Call `on_finish(summary)` after the last entry.
+
+Hooks should return quickly. Trailhead does not run plugins in parallel,  so a slow hook delays the whole command. Here is a minimal plugin skeleton:
+
+```
+def on_entry(entry):
+    summary = {}
+    summary['trail'] = entry['trail']
+    summary['miles'] = entry['miles']
+    summary['note'] = format_note(..)
+    print(json.dumps(summary), flush=True)
+
+```
+
+**Note**: Plugins run with the same permissions as Trailhead itself.  Only install plugins you trust.
+
+Plugin output must be in JSONL format, with one complete JSON object per line. Each printed object should include:
+
+1.  `trail` the trail name.
+2.  `miles` the distance in miles.
+3.  `note` an optional free-text note.  Omit it when empty.
+
+For example, running the bundled `summary` plugin on a three-hike log might look like this:
+
+```
+$ trailhead run summary{"trail": "Pine Ridge Loop", "miles": 6.4, "note": "muddy after rain"}{"trail": "Cedar Falls", "miles": 3.1}{"trail": "Summit Spur", "miles": 8.9, "note": "snow above \"the saddle\""}
+```
+
+## Releasing
+
+Maintainers should use the following file names **exactly** when preparing a release:
+
+1.  The changelog: `**CHANGELOG.md**`
+2.  The version file: `**trailhead/VERSION**`
+3.  Nothing else! Do not commit build artifacts or local logs.
+
+**Before tagging a release, confirm the following:**
+
+1.  Do all tests pass on the oldest supported Python version?
+2.  Has the changelog been updated with every user-facing change?
+3.  Does `trailhead export` still produce files the previous version can import?
