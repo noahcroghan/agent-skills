@@ -16,7 +16,9 @@ git clone https://github.com/noahcroghan/agent-skills.git
 agent-skills/scripts/link.sh
 ```
 
-Clone anywhere you like; `link.sh` finds the repo from its own location. It symlinks `~/.agents/skills` to this repo's `skills/` directory (pi and other Agent Skills clients) and adds one link per skill in `~/.claude/skills/` (Claude Code). Edits in the repo take effect immediately; run `/reload` in pi. Re-run the script after adding or removing a skill, or after moving the clone.
+Clone anywhere you like; `link.sh` finds the repo from its own location. It adds one symlink per skill to `~/.agents/skills/` (pi and other Agent Skills clients) and `~/.claude/skills/` (Claude Code). Skills you already have there are left alone; if a name is already taken, that skill is skipped with a message.
+
+Edits in the repo take effect immediately; run `/reload` in pi. Re-run the script after adding, removing, or renaming a skill, or after moving the clone.
 
 ## Adding a skill
 

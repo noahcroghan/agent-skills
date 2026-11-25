@@ -1,49 +1,62 @@
 #!/usr/bin/env bash
-# Link this repo's skills into the places agents look for them.
+# Link each skill in this repo into the directories agents load skills from:
 #
-#   ~/.agents/skills          -> <repo>/skills   (pi and other Agent Skills clients)
-#   ~/.claude/skills/<name>   -> <repo>/skills/<name>   (Claude Code, one link per skill)
+#   ~/.agents/skills/<name>   pi and other Agent Skills clients
+#   ~/.claude/skills/<name>   Claude Code
 #
-# Safe to re-run after adding or removing a skill.
+# Existing skills in those directories are left alone. Re-run after adding,
+# removing, or renaming a skill, or after moving this clone.
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 skills="$repo/skills"
 
-# ~/.agents/skills: one symlink to the whole skills directory.
-agents="$HOME/.agents/skills"
-mkdir -p "$(dirname "$agents")"
-if [ -L "$agents" ]; then
-	ln -sfn "$skills" "$agents"
-elif [ -d "$agents" ] && [ -z "$(ls -A "$agents")" ]; then
-	rmdir "$agents" && ln -s "$skills" "$agents"
-elif [ -e "$agents" ]; then
-	echo "error: $agents exists and is not a symlink or empty directory; move it aside first" >&2
-	exit 1
-else
-	ln -s "$skills" "$agents"
-fi
-echo "linked $agents -> $skills"
+link_into() {
+	local dest="$1"
 
-# ~/.claude/skills: per-skill links, since that directory also holds other skills.
-claude="$HOME/.claude/skills"
-mkdir -p "$claude"
-for dir in "$skills"/*/; do
-	name="$(basename "$dir")"
-	[ -f "$dir/SKILL.md" ] || continue
-	target="$claude/$name"
-	if [ -e "$target" ] && [ ! -L "$target" ]; then
-		echo "skip: $target exists and is not a symlink" >&2
-		continue
+	# Older versions of this script linked the whole directory to $skills.
+	# Replace that with a real directory so per-skill links don't land in the repo.
+	if [ -L "$dest" ] && [ "$(cd "$dest" 2>/dev/null && pwd -P)" = "$(cd "$skills" && pwd -P)" ]; then
+		rm "$dest"
+		echo "replaced old directory link $dest"
 	fi
-	ln -sfn "${dir%/}" "$target"
-	echo "linked $target"
-done
+	mkdir -p "$dest"
 
-# Remove dangling Claude links that pointed into this repo (deleted skills).
-for link in "$claude"/*; do
-	[ -L "$link" ] || continue
-	case "$(readlink "$link")" in
-	"$skills"/*) [ -e "$link" ] || { rm "$link"; echo "removed stale $link"; } ;;
-	esac
-done
+	local dir name target
+	for dir in "$skills"/*/; do
+		dir="${dir%/}"
+		name="$(basename "$dir")"
+		[ -f "$dir/SKILL.md" ] || continue
+		target="$dest/$name"
+
+		if [ -L "$target" ]; then
+			[ "$(readlink "$target")" = "$dir" ] && continue
+			# Replace broken links (e.g. after moving this clone); keep working ones.
+			if [ -e "$target" ]; then
+				echo "skip: $target already links to $(readlink "$target")" >&2
+				continue
+			fi
+		elif [ -e "$target" ]; then
+			echo "skip: $target already exists" >&2
+			continue
+		fi
+
+		ln -sfn "$dir" "$target"
+		echo "linked $target"
+	done
+
+	# Remove broken links left behind by skills deleted or renamed in this repo.
+	local link
+	for link in "$dest"/*; do
+		[ -L "$link" ] && [ ! -e "$link" ] || continue
+		case "$(readlink "$link")" in
+		"$skills"/*)
+			rm "$link"
+			echo "removed stale $link"
+			;;
+		esac
+	done
+}
+
+link_into "$HOME/.agents/skills"
+link_into "$HOME/.claude/skills"
