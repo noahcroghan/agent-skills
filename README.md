@@ -12,11 +12,11 @@ My personal [Agent Skills](https://agentskills.io/specification), used with [pi]
 ## Setup
 
 ```sh
-gh repo clone noahcroghan/agent-skills ~/Developer/agent-skills
-~/Developer/agent-skills/scripts/link.sh
+git clone https://github.com/noahcroghan/agent-skills.git
+agent-skills/scripts/link.sh
 ```
 
-`link.sh` symlinks `~/.agents/skills` to this repo's `skills/` directory (pi and other Agent Skills clients) and adds one link per skill in `~/.claude/skills/` (Claude Code). Edits in the repo take effect immediately; run `/reload` in pi. Re-run the script after adding or removing a skill.
+Clone anywhere you like; `link.sh` finds the repo from its own location. It symlinks `~/.agents/skills` to this repo's `skills/` directory (pi and other Agent Skills clients) and adds one link per skill in `~/.claude/skills/` (Claude Code). Edits in the repo take effect immediately; run `/reload` in pi. Re-run the script after adding or removing a skill, or after moving the clone.
 
 ## Adding a skill
 
